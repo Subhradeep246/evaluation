@@ -1,0 +1,5 @@
+.env
+conversation_log.json
+conversation_log_verbose.json
+__pycache__/
+*.pyc
