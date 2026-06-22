@@ -1,0 +1,9 @@
+# Secrets / local config
+.env
+
+# Persistent Chromium profile (contains your logged-in session — never commit)
+browser_profile/
+
+# Python
+__pycache__/
+*.pyc
