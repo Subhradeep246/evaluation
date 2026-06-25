@@ -38,11 +38,13 @@ STEP2_SELECTORS = {
     # Plain @name=description hits the <meta> tag first — need the textarea.
     "description": ["tag:textarea@name=description", "@placeholder:Joe Shmoe"],
     "greeting": ["@name=greeting"],
-    "rating_dropdown": ["text:Select rating"],
+    "rating_dropdown": ["text:Select rating", "text:Select content rating"],
+    "rating_10_plus": ["text:Everyone (10+)", "text:10+"],
+    "rating_18_plus": ["text:18+", "text:Mature"],
     "terms_checkbox": ["tag:input@type=checkbox"],
     "continue": ["text:Continue"],
 }
-RATING_PREFERENCE = ["Everyone", "All Ages", "Everyone (10+)", "Teen", "Mature", "18+"]
+RATING_PREFERENCE = ["Everyone (10+)", "18+"]
 
 CHAT_SELECTORS = {
     # Bottom-of-chat textarea. Don't use @placeholder:Message alone — that
@@ -69,7 +71,8 @@ CHAT_SELECTORS = {
 
 TIMING = {
     "page_load": 8.0,
-    "reply_timeout": 60.0,
-    "dom_stable_window": 2.0,   # reply done when text stops changing for this long
-    "between_messages": 2.5,    # small pause so we don't hammer the API
+    "reply_timeout": 30.0,
+    "dom_stable_window": 0.5,
+    "dom_fallback_timeout": 6.0,  # only when SSE reply looks cut off
+    "between_messages": 0.4,
 }

@@ -220,6 +220,82 @@ def _select_dropdown(page, opener_candidates, preferences, label):
     return False
 
 
+
+def _rating_placeholder_visible(page) -> bool:
+    for text in ("Select rating", "Select content rating"):
+        try:
+            if page.ele(f"text:{text}", timeout=0.25):
+                return True
+        except Exception:
+            continue
+    return False
+
+
+def _rating_labels_for(preferred: str) -> list[str]:
+    """Map stored rating to the labels Dopple actually shows (10+ vs 18+)."""
+    p = (preferred or "").strip()
+    if "18" in p or p.lower() in ("mature", "adult"):
+        return ["18+"]
+    return ["Everyone (10+)"]
+
+
+def _select_content_rating(page, preferred: str) -> bool:
+    """Pick 10+ or 18+ once. Continue may stay grey until terms are checked too."""
+    if not _rating_placeholder_visible(page):
+        print("  [ok]   content rating already set")
+        return True
+
+    label = _rating_labels_for(preferred)[0]
+    opener = _first(page, STEP2_SELECTORS["rating_dropdown"], timeout=1.5)
+    if opener:
+        try:
+            opener.click()
+            time.sleep(0.5)
+        except Exception:
+            pass
+
+    try:
+        opt = page.ele(f"text:{label}", timeout=1.5)
+        if opt:
+            opt.click()
+            time.sleep(0.5)
+    except Exception:
+        pass
+
+    if not _rating_placeholder_visible(page):
+        print(f"  [ok]   content rating = {label}")
+        return True
+
+    # Tile-style UI (no dropdown placeholder) — one targeted click only.
+    try:
+        picked = page.run_js(
+            """
+            const want = arguments[0];
+            const nodes = [...document.querySelectorAll(
+                'button, [role="button"], [role="option"], [role="radio"], li, label'
+            )];
+            for (const el of nodes) {
+                const t = (el.innerText || el.textContent || '').trim();
+                if (t === want || t.includes(want)) {
+                    el.click();
+                    return want;
+                }
+            }
+            return null;
+            """,
+            label,
+        )
+        if picked:
+            time.sleep(0.5)
+            print(f"  [ok]   content rating = {picked}")
+            return True
+    except Exception:
+        pass
+
+    print("  [warn] content rating not selected (10+ / 18+)")
+    return False
+
+
 def create_character(page, details=None):
     details = details or generate_character_details()
     print(f"\n=== Character: {details['name']} ===")
@@ -271,16 +347,15 @@ def create_character(page, details=None):
     description = details["description"]
     _fill_field(page, STEP2_SELECTORS["description"], description, "description")
     _fill_field(page, STEP2_SELECTORS["greeting"], greeting, "greeting")
-    _select_dropdown(
-        page, STEP2_SELECTORS["rating_dropdown"],
-        [details["rating"], "Everyone", "Everyone (10+)"], "content rating",
-    )
+    _select_content_rating(page, details.get("rating", "Everyone (10+)"))
 
     _agree_terms(page)
 
-    if not _click_when_enabled(page, STEP2_SELECTORS["continue"], "Continue (step 2)"):
+    if not _click_when_enabled(page, STEP2_SELECTORS["continue"], "Continue (step 2)", tries=10):
+        if _rating_placeholder_visible(page):
+            _select_content_rating(page, "Everyone (10+)")
         _agree_terms(page)
-        _click_when_enabled(page, STEP2_SELECTORS["continue"], "Continue (step 2, retry)")
+        _click_when_enabled(page, STEP2_SELECTORS["continue"], "Continue (step 2, retry)", tries=8)
     time.sleep(5)
 
     print("\n=== Character created ===")
